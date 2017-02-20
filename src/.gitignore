@@ -1,2 +1,2 @@
-.tmp.yml
+*.tmp.yml
 .env

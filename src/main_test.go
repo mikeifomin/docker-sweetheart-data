@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"github.com/docker/libcompose/docker"
 	"github.com/docker/libcompose/docker/ctx"
 	"github.com/docker/libcompose/project"
@@ -11,8 +13,10 @@ import (
 	"log"
 	"math/rand"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"text/template"
 	"time"
@@ -27,8 +31,8 @@ type compose struct {
 }
 
 func NewCompose(spec string) (*compose, error) {
-
-	uniqId := randStr(5)
+	uniqId := fmt.Sprint(time.Now().UnixNano()) + randStr(5)
+	log.Println(uniqId)
 	c := compose{
 		spec:     spec,
 		Port:     findAvailablePort(3000),
@@ -43,6 +47,7 @@ func NewCompose(spec string) (*compose, error) {
 	}
 	return &c, nil
 }
+
 func (c *compose) run() error {
 	spec, errC := compile(c.spec, c)
 	log.Println(spec)
@@ -68,6 +73,7 @@ func (c *compose) run() error {
 	c.prj = &prj
 	return nil
 }
+
 func compile(str string, data interface{}) (string, error) {
 	tmpl, err := template.New("my").Parse(str)
 	if err != nil {
@@ -80,6 +86,7 @@ func compile(str string, data interface{}) (string, error) {
 	}
 	return buf.String(), nil
 }
+
 func (c *compose) clean() {
 	_ = os.Remove(c.filename)
 }
@@ -92,16 +99,20 @@ func (c *compose) Kill() {
 	}
 	c.clean()
 }
+
 func findAvailablePort(port int) int {
-	for {
-		ln, err := net.Listen("tcp", ":"+strconv.Itoa(port))
-		if err == nil {
-			ln.Close()
-			return port
-		}
-		log.Println("Port %i not available: %v", port, err)
-		port++
+	ln, err := net.Listen("tcp", ":0")
+	if err != nil {
+		panic(err)
 	}
+	defer ln.Close()
+	fullHost := ln.Addr().String()
+	parts := strings.Split(fullHost, ":")
+	res, err := strconv.ParseInt(parts[len(parts)-1], 10, 32)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return int(res)
 }
 
 func randStr(n int) string {
@@ -120,8 +131,14 @@ services:
   mongo:
     image: mongo:3.2
 `)
+
 	defer prj.Kill()
 }
+
+type AnswerHealth struct {
+	Status string
+}
+
 func TestSelfTestserver(t *testing.T) {
 	prj, _ := NewCompose(`
 version: '2'
@@ -133,6 +150,19 @@ services:
     ports:
       - {{.Port}}:3000
 `)
+	time.Sleep(time.Second * 3)
+	url := "http://localhost:" + strconv.Itoa(prj.Port) + "/health"
+	res, err := http.Get(url)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer res.Body.Close()
 
+	var answer AnswerHealth
+	_ = json.NewDecoder(res.Body).Decode(&answer)
+	if answer.Status != "ok" {
+		t.Error("test server does not responding")
+	}
 	defer prj.Kill()
 }
