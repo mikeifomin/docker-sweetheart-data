@@ -6,7 +6,6 @@ import (
 )
 
 func main() {
-	restore()
 	neverEnds := make(chan bool)
 	fmt.Println("hi")
 	c := cron.New()

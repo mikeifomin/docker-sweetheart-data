@@ -1,8 +1,10 @@
 package sweetheart_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
+	"github.com/mikeifomin/docker-sweetheart-data/testserver"
 )
 
 func TestSelfDockerComposeRun(t *testing.T) {
@@ -14,10 +16,6 @@ services:
 `)
 
 	defer prj.Kill()
-}
-
-type AnswerHealth struct {
-	Status string
 }
 
 func TestSelfTestserver(t *testing.T) {
@@ -33,34 +31,16 @@ services:
     ports:
       - {{.Port}}:3000
 `)
+  resp := testserver.RespHealth{}
+	err := prj.CallTestServer("/health",testserver.ParamsHealth{},&resp)
+	if err != nil {
+		t.Error(err)
+	}
+	if resp.Status != "ok" {
+		t.Error("status not ok")
+	}
+	fmt.Println(prj)
 	time.Sleep(time.Second * 3)
-	defer prj.Kill()
-}
-func TestDataSync(t *testing.T) {
-
-	prj, _ := NewCompose(`
-version: '2'
-volumes:
-  data:
-services:
-  mongo:
-    image: mongo:3.2
-  testserver:
-    build:
-      context: .
-      dockerfile: Dockerfile.testserver
-    volumes:
-     - data:/data
-    ports:
-      - {{.Port}}:3000
-  bkp:
-    build: .
-    volumes:
-      - data:/bkp-all/foo
-      - data:/sync-only/foo
-    environment:
-      CRON: "@daily"
-    
-`)
+	fmt.Println(prj)
 	defer prj.Kill()
 }

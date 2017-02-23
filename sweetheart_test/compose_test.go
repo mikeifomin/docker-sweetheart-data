@@ -1,11 +1,15 @@
 package sweetheart_test
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path"
+	"strconv"
 	"time"
 
 	"github.com/docker/libcompose/docker"
@@ -65,6 +69,25 @@ func (c *compose) run() error {
 		return err
 	}
 	c.prj = &prj
+	return nil
+}
+func (c *compose) CallTestServer(urlPath string, param interface{}, out interface{}) error {
+	var body bytes.Buffer
+	err := json.NewEncoder(&body).Encode(param)
+	if err != nil {
+		return err
+	}
+	
+	url := "http://localhost:"+ strconv.Itoa(c.Port)+ urlPath
+	resp, err := http.Post(url, "application/json", &body)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	err = json.NewDecoder(resp.Body).Decode(&out)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
