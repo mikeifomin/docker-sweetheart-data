@@ -1,0 +1,9 @@
+FROM golang:1.8-alpine
+ENV repo  /go/src/github.com/mikeifomin/docker-sweetheart-data
+RUN mkdir -p $repo
+ADD ./ $repo
+
+WORKDIR $repo/testserver_main
+RUN go get
+RUN go build -o main
+CMD ["./main"]

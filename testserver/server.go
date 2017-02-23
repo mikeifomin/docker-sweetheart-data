@@ -15,8 +15,10 @@ type Srv struct {
 	Port int
 	Root string
 }
+var DIR string	
 
 func NewServer(port int, root string) *Srv {
+	DIR = root
 	srv := http.NewServeMux()
 	srv.HandleFunc("/health", health)
 	srv.HandleFunc("/addFile", addFile)
@@ -34,7 +36,7 @@ func health(w http.ResponseWriter, r *http.Request) {
 }
 
 func listFiles(w http.ResponseWriter, r *http.Request) {
-	files, err := ioutil.ReadDir(DIR)
+	files, err := ioutil.ReadDir("./")
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(500)
@@ -51,8 +53,8 @@ func listFiles(w http.ResponseWriter, r *http.Request) {
 }
 
 func addFile(w http.ResponseWriter, r *http.Request) {
+	opt := ParamsAddFile{}
 	decoder := json.NewDecoder(r.Body)
-	var opt OptNewFile
 	err := decoder.Decode(&opt)
 	if err != nil {
 		w.WriteHeader(400)
