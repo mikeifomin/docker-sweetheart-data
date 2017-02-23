@@ -1,0 +1,36 @@
+version: '2'
+volumes:
+  db:
+  files:
+
+services:
+  node:
+    build: ./testserver
+    volumes:
+      - files:/files
+  mongodb:
+    image: 3.2
+    volumes:
+      - db:/data/db
+  mongodb_bkp:
+    image: ./app
+    volumes:
+      - files: /auto-bkp/files
+    environment:
+      MONGO_URL: mongodb://mongodb/db
+      RESTORE: yes
+      CRON: @daily
+      B2_KEY: "${B2_KEY}"
+      B2_ACCOUNT: "${B2_ACCOUNT}"
+      BUCKET: test_db
+  files_bkp:
+    image: ./app
+    volumes:
+      - files: /auto-bkp/files
+    environment:
+      RESTORE: yes
+      CRON: @daily
+      B2_KEY: "${B2_KEY}"
+      B2_ACCOUNT: "${B2_ACCOUNT}"
+      BUCKET: test_files
+      SYNC: no
